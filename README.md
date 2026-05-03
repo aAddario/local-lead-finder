@@ -38,6 +38,11 @@ npm run dev
 
 Acesse `http://localhost:3000`.
 
+> **Nota:** O comando `npm run dev` precisa ficar rodando no terminal. Não feche a janela do terminal enquanto estiver usando o projeto. Se precisar rodar em background, use:
+> ```bash
+> nohup npm run dev &
+> ```
+
 ## Build para produção
 
 ```bash
