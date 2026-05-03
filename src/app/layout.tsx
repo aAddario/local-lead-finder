@@ -61,7 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
           </header>
-          <main className="w-full">{children}</main>
+          <main className="w-full overflow-x-hidden">{children}</main>
         </div>
       </body>
     </html>

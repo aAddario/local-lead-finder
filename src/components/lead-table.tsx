@@ -30,14 +30,19 @@ export function LeadTable({ leads, editable = false, onChange }: { leads: Lead[]
   const columns = useMemo<ColumnDef<Lead>[]>(
     () => [
       { header: "Score", accessorKey: "score", cell: ({ row }) => <ScoreBadge score={row.original.score} label={row.original.scoreLabel} /> },
-      { header: "Nome", accessorKey: "name", cell: ({ row }) => <div><p className="font-bold text-charcoal dark:text-white">{row.original.name}</p><p className="text-xs text-stone-500 dark:text-stone-400">{row.original.scoreReasons.slice(0, 3).join(" · ")}</p></div> },
-      { header: "Categoria", accessorKey: "category" },
-      { header: "Telefone", accessorKey: "phone", cell: ({ row }) => row.original.phone ?? <span className="text-stone-400">Ausente</span> },
-      { header: "Site", accessorKey: "website", cell: ({ row }) => row.original.website ? <a className="text-amethyst underline" href={row.original.website} target="_blank" rel="noreferrer noopener">Abrir</a> : <span className="text-stone-400">Possivelmente nenhum</span> },
-      { header: "Cidade", accessorKey: "city" },
+      { header: "Nome", accessorKey: "name", cell: ({ row }) => (
+        <div className="min-w-0">
+          <p className="truncate font-bold text-charcoal dark:text-white">{row.original.name}</p>
+          <p className="line-clamp-2 text-xs text-stone-500 dark:text-stone-400">{row.original.scoreReasons.slice(0, 3).join(" · ")}</p>
+        </div>
+      )},
+      { header: "Categoria", accessorKey: "category", cell: ({ row }) => <span className="text-sm">{row.original.category}</span> },
+      { header: "Telefone", accessorKey: "phone", cell: ({ row }) => <span className="text-sm text-stone-600 dark:text-stone-300">{row.original.phone ?? <span className="text-stone-400">Ausente</span>}</span> },
+      { header: "Site", accessorKey: "website", cell: ({ row }) => row.original.website ? <a className="text-sm text-amethyst underline" href={row.original.website} target="_blank" rel="noreferrer noopener">Abrir</a> : <span className="text-sm text-stone-400">Nenhum</span> },
+      { header: "Cidade", accessorKey: "city", cell: ({ row }) => <span className="text-sm">{row.original.city}</span> },
       { header: "Status", accessorKey: "status", cell: ({ row }) => editable ? <StatusEditor lead={row.original} onChange={updateRow} /> : <StatusBadge status={row.original.status} /> },
-      { header: "Observações", accessorKey: "notes", cell: ({ row }) => editable ? <NotesEditor lead={row.original} onChange={updateRow} /> : <span className="text-sm text-stone-600 dark:text-stone-300">{row.original.notes}</span> },
-      { header: "Ações", size: 420, cell: ({ row }) => <LeadActions lead={row.original} onSaved={updateRow} /> }
+      { header: "Observações", accessorKey: "notes", cell: ({ row }) => editable ? <NotesEditor lead={row.original} onChange={updateRow} /> : <span className="line-clamp-2 text-sm text-stone-600 dark:text-stone-300">{row.original.notes}</span> },
+      { id: "actions", header: "Ações", cell: ({ row }) => <LeadActions lead={row.original} onSaved={updateRow} /> }
     ],
     [editable, rows]
   );
@@ -70,7 +75,7 @@ export function LeadTable({ leads, editable = false, onChange }: { leads: Lead[]
         <Button variant="cream" onClick={exportCurrentCsv}>Exportar CSV</Button>
       </div>
       <div className="overflow-x-auto rounded-2xl border border-parchment dark:border-white/10">
-        <table className="w-full min-w-[1100px] border-collapse text-sm">
+        <table className="w-full border-collapse text-sm">
           <thead className="bg-stone-50 text-left dark:bg-white/5">
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>
@@ -79,7 +84,7 @@ export function LeadTable({ leads, editable = false, onChange }: { leads: Lead[]
                     {header.column.getCanSort() ? (
                       <button type="button" onClick={header.column.getToggleSortingHandler()} className="inline-flex items-center gap-1 text-left">
                         {flexRender(header.column.columnDef.header, header.getContext())}
-                        <ArrowDownUp className="h-3.5 w-3.5 text-stone-400" />
+                        <ArrowDownUp className="h-3.5 w-3.5 shrink-0 text-stone-400" />
                       </button>
                     ) : (
                       flexRender(header.column.columnDef.header, header.getContext())
@@ -92,7 +97,11 @@ export function LeadTable({ leads, editable = false, onChange }: { leads: Lead[]
           <tbody>
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id} className="border-b border-parchment align-top transition hover:bg-stone-50/60 dark:border-white/5 dark:hover:bg-white/5">
-                {row.getVisibleCells().map((cell) => <td key={cell.id} className="px-4 py-3">{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>)}
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id} className="px-4 py-4">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -120,5 +129,5 @@ function NotesEditor({ lead, onChange }: { lead: Lead; onChange: (lead: Lead) =>
     const data = await fetchJson<{ lead: Lead }>(`/api/leads/${lead.id}`, { method: "PATCH", body: JSON.stringify({ notes }) });
     onChange(data.lead);
   }
-  return <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} onBlur={save} className="min-h-16 w-56" />;
+  return <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} onBlur={save} className="min-h-16 w-full" />;
 }

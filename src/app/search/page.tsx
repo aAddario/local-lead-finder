@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AlertTriangle, CheckSquare, Search, Square } from "lucide-react";
-import { LeadTable } from "@/components/lead-table";
+import { LeadList } from "@/components/lead-list";
 import { LeadMap } from "@/components/lead-map";
 import { EmptyState } from "@/components/empty-state";
 import { SkeletonRows } from "@/components/skeleton";
@@ -57,7 +57,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
+    <div className="mx-auto max-w-7xl px-6 py-10 space-y-8">
       <section>
         <p className="text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Busca por área</p>
         <h1 className="mt-2 max-w-4xl text-2xl font-medium tracking-tight text-charcoal dark:text-white md:text-3xl">
@@ -157,7 +157,7 @@ export default function SearchPage() {
             <h2 className="text-xl font-bold tracking-tight text-charcoal dark:text-white">{leads.length} leads encontrados</h2>
             <p className="text-sm text-stone-500 dark:text-stone-400">{geoLabel}</p>
           </Card>
-          <LeadTable leads={leads} />
+          <LeadList leads={leads} />
           <LeadMap leads={leads} />
         </div>
       )}
