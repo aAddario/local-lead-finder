@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="brand" x1="126" y1="78" x2="386" y2="438" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0ea5e9"/>
+      <stop offset=".58" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#84cc16"/>
+    </linearGradient>
+    <filter id="glow" x="54" y="42" width="404" height="430" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#14b8a6" flood-opacity=".22"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#glow)" fill="url(#brand)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M255.7 170c-56.7 0-102.7 46-102.7 102.7 0 25.3 9.2 48.5 24.4 66.4l78.3 96.9 77.8-96.3a102.3 102.3 0 0 0 24.9-67c0-56.7-46-102.7-102.7-102.7Zm0 34.5a68.2 68.2 0 1 0 0 136.4 68.2 68.2 0 0 0 0-136.4Z"/>
+    <circle cx="255.7" cy="248.2" r="23.7"/>
+    <path d="M211.7 315.7c3.9-28.2 23-44.8 44.3-44.8 21.4 0 40.6 16.6 44.4 44.8a73 73 0 0 1-88.7 0Z"/>
+    <rect x="328.6" y="330.2" width="39.6" height="132" rx="19.8" transform="rotate(-45 328.6 330.2)"/>
+    <rect x="343.5" y="318.8" width="28" height="58" rx="10" transform="rotate(-45 343.5 318.8)"/>
+    <path d="M137.8 220.7a18 18 0 0 1-18-18c0-78.1 63.4-141.5 141.5-141.5 42.6 0 80.7 18.8 106.6 48.7a18 18 0 1 1-27.2 23.6 105.4 105.4 0 0 0-79.4-36.3c-58.2 0-105.5 47.3-105.5 105.5a18 18 0 0 1-18 18Z"/>
+    <path d="M184.3 220.7a18 18 0 0 1-18-18c0-52.4 42.6-95 95-95 28.6 0 54.2 12.6 71.6 32.6a18 18 0 0 1-27.2 23.7 58.8 58.8 0 0 0-44.4-20.3c-32.6 0-59 26.4-59 59a18 18 0 0 1-18 18Z"/>
+  </g>
+</svg>
