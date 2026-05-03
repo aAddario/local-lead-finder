@@ -36,8 +36,8 @@ export default function KanbanPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 space-y-6">
       <section>
-        <p className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Mini CRM</p>
-        <h1 className="mt-2 text-3xl font-medium tracking-tight text-charcoal dark:text-white md:text-4xl">
+        <p className="text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Mini CRM</p>
+        <h1 className="mt-2 text-2xl font-medium tracking-tight text-charcoal dark:text-white md:text-3xl">
           Pipeline por status do lead.
         </h1>
       </section>
