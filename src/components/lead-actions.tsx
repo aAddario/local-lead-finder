@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy, ExternalLink, Facebook, Instagram, MapPinned, MessageCircle, Search, Save, Sparkles, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchJson } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { generateLeadProposal } from "@/lib/proposal";
@@ -12,25 +12,38 @@ type LeadActionsProps = {
   lead: Lead;
   onSaved?: (lead: Lead) => void;
   layout?: "stacked" | "inline";
+  persisted?: boolean;
 };
 
 type Feedback = "saved" | "copied" | "updated" | "analyzed" | "error" | null;
 
-export function LeadActions({ lead, onSaved, layout = "stacked" }: LeadActionsProps) {
+export function LeadActions({ lead, onSaved, layout = "stacked", persisted = false }: LeadActionsProps) {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [busy, setBusy] = useState(false);
-  const whatsappUrl = getWhatsAppUrl(lead);
+  const [savedLead, setSavedLead] = useState<Lead | null>(persisted ? lead : null);
+  const activeLead = savedLead ?? lead;
+  const whatsappUrl = getWhatsAppUrl(activeLead);
+
+  useEffect(() => {
+    if (persisted) setSavedLead(lead);
+  }, [lead, persisted]);
 
   function flash(next: Feedback) {
     setFeedback(next);
     window.setTimeout(() => setFeedback(null), 1800);
   }
 
+  async function persistLead() {
+    const data = await fetchJson<{ lead: Lead }>("/api/leads", { method: "POST", body: JSON.stringify(activeLead) });
+    setSavedLead(data.lead);
+    onSaved?.(data.lead);
+    return data.lead;
+  }
+
   async function saveLead() {
+    setBusy(true);
     try {
-      setBusy(true);
-      const data = await fetchJson<{ lead: Lead }>("/api/leads", { method: "POST", body: JSON.stringify(lead) });
-      onSaved?.(data.lead);
+      await persistLead();
       flash("saved");
     } catch {
       flash("error");
@@ -39,11 +52,17 @@ export function LeadActions({ lead, onSaved, layout = "stacked" }: LeadActionsPr
     }
   }
 
+  async function ensureSaved() {
+    if (persisted || savedLead) return activeLead;
+    return persistLead();
+  }
+
   async function patchLead(patch: Partial<Lead>) {
     setBusy(true);
     try {
-      await fetchJson<{ lead: Lead }>("/api/leads", { method: "POST", body: JSON.stringify(lead) });
-      const data = await fetchJson<{ lead: Lead }>(`/api/leads/${lead.id}`, { method: "PATCH", body: JSON.stringify(patch) });
+      const baseLead = await ensureSaved();
+      const data = await fetchJson<{ lead: Lead }>(`/api/leads/${baseLead.id}`, { method: "PATCH", body: JSON.stringify(patch) });
+      setSavedLead(data.lead);
       onSaved?.(data.lead);
       flash("updated");
     } catch {
@@ -54,11 +73,11 @@ export function LeadActions({ lead, onSaved, layout = "stacked" }: LeadActionsPr
   }
 
   async function copyMessage(tone: MessageTone) {
-    await copyText(getOutreachMessage(lead, tone));
+    await copyText(getOutreachMessage(activeLead, tone));
   }
 
   async function copyProposal() {
-    await copyText(generateLeadProposal(lead).text);
+    await copyText(generateLeadProposal(activeLead).text);
   }
 
   async function copyText(text: string) {
@@ -110,21 +129,23 @@ export function LeadActions({ lead, onSaved, layout = "stacked" }: LeadActionsPr
     const now = new Date().toISOString();
     await patchLead({
       status,
-      firstContactAt: lead.firstContactAt ?? now,
+      firstContactAt: activeLead.firstContactAt ?? now,
       lastContactAt: now,
       contactChannel: channel,
       contactHistory: [
-        ...lead.contactHistory,
+        ...activeLead.contactHistory,
         { id: crypto.randomUUID(), at: now, channel, note: `Contato registrado via ${channel}` }
       ]
     });
   }
 
   async function analyzeSite() {
-    if (!lead.website) return;
+    if (!activeLead.website) return;
     try {
       setBusy(true);
-      const data = await fetchJson<{ lead: Lead }>(`/api/leads/${lead.id}/analyze-site`, { method: "POST" });
+      const baseLead = await ensureSaved();
+      const data = await fetchJson<{ lead: Lead }>(`/api/leads/${baseLead.id}/analyze-site`, { method: "POST" });
+      setSavedLead(data.lead);
       onSaved?.(data.lead);
       flash("analyzed");
     } catch {
@@ -143,15 +164,15 @@ export function LeadActions({ lead, onSaved, layout = "stacked" }: LeadActionsPr
         <ActionButton active={feedback === "copied"} label="Informal" onClick={() => copyMessage("informal")} icon={Copy} variant="secondary" disabled={busy} />
         <ActionButton active={feedback === "copied"} label="Personal." onClick={() => copyMessage("personalized")} icon={Sparkles} variant="secondary" disabled={busy} />
         <ActionButton active={feedback === "copied"} label="Proposta" onClick={copyProposal} icon={Copy} variant="secondary" disabled={busy} />
-        {lead.website && <ActionButton active={feedback === "analyzed"} label={feedback === "analyzed" ? "Analisado" : "Analisar site"} onClick={analyzeSite} icon={Sparkles} variant="secondary" disabled={busy} />}
+        {activeLead.website && <ActionButton active={feedback === "analyzed"} label={feedback === "analyzed" ? "Analisado" : "Analisar site"} onClick={analyzeSite} icon={Sparkles} variant="secondary" disabled={busy} />}
       </div>
 
       <div className={layout === "inline" ? "ml-auto flex flex-wrap items-center gap-2" : "flex flex-wrap items-center gap-2"}>
-        <IconLink href={getGoogleSearchUrl(lead)} title="Buscar no Google" icon={Search} onClick={() => patchLead({ lastCheckedAt: new Date().toISOString() })} />
-        <IconLink href={getInstagramSearchUrl(lead)} title="Buscar no Instagram" icon={Instagram} />
-        <IconLink href={getFacebookSearchUrl(lead)} title="Buscar no Facebook" icon={Facebook} />
+        <IconLink href={getGoogleSearchUrl(activeLead)} title="Buscar no Google" icon={Search} onClick={() => patchLead({ lastCheckedAt: new Date().toISOString() })} />
+        <IconLink href={getInstagramSearchUrl(activeLead)} title="Buscar no Instagram" icon={Instagram} />
+        <IconLink href={getFacebookSearchUrl(activeLead)} title="Buscar no Facebook" icon={Facebook} />
         {whatsappUrl && <IconLink href={whatsappUrl} title="Abrir WhatsApp" icon={MessageCircle} onClick={() => registerContact("WhatsApp")} />}
-        <IconLink href={getMapUrl(lead)} title="Ver no OpenStreetMap" icon={MapPinned} />
+        <IconLink href={getMapUrl(activeLead)} title="Ver no OpenStreetMap" icon={MapPinned} />
       </div>
 
       <div className="flex w-full flex-wrap items-center gap-2">

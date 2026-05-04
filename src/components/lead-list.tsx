@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download, Search, SlidersHorizontal } from "lucide-react";
+import { Download, Save, Search, SlidersHorizontal } from "lucide-react";
 import { LeadCard } from "@/components/lead-card";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { fetchJson } from "@/lib/api";
 import { leadsToCsv } from "@/lib/csv";
 import { leadStatuses, type Lead, type LeadStatus } from "@/types/lead";
 
@@ -21,6 +22,8 @@ export function LeadList({ leads, editable = false, onChange }: LeadListProps) {
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
   const [scoreFloor, setScoreFloor] = useState(0);
   const [sortBy, setSortBy] = useState<SortMode>("score");
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkSavedCount, setBulkSavedCount] = useState(0);
 
   const stats = useMemo(
     () => ({
@@ -65,10 +68,25 @@ export function LeadList({ leads, editable = false, onChange }: LeadListProps) {
     URL.revokeObjectURL(link.href);
   }
 
+  async function saveVisibleLeads() {
+    setBulkSaving(true);
+    setBulkSavedCount(0);
+    try {
+      let saved = 0;
+      for (const lead of filtered) {
+        await fetchJson<{ lead: Lead }>("/api/leads", { method: "POST", body: JSON.stringify(lead) });
+        saved += 1;
+        setBulkSavedCount(saved);
+      }
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-parchment bg-white p-4 shadow-tight dark:border-white/10 dark:bg-[#12101f]">
-        <div className="grid gap-3 lg:grid-cols-[1fr_160px_150px_150px_auto] lg:items-center">
+        <div className="grid gap-3 lg:grid-cols-[1fr_160px_150px_150px_auto_auto] lg:items-center">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <Input
@@ -106,6 +124,13 @@ export function LeadList({ leads, editable = false, onChange }: LeadListProps) {
             <Download className="mr-1.5 h-4 w-4" />
             CSV
           </Button>
+
+          {!editable && (
+            <Button onClick={saveVisibleLeads} className="shrink-0" disabled={filtered.length === 0 || bulkSaving}>
+              <Save className="mr-1.5 h-4 w-4" />
+              {bulkSaving ? "Salvando..." : "Salvar visiveis"}
+            </Button>
+          )}
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
@@ -116,6 +141,9 @@ export function LeadList({ leads, editable = false, onChange }: LeadListProps) {
           <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{stats.strong} score 80+</span>
           <span className="rounded-lg bg-amber-50 px-2.5 py-1 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{stats.noWebsite} sem site</span>
           <span className="rounded-lg bg-sky-50 px-2.5 py-1 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">{stats.withPhone} com telefone</span>
+          {!editable && bulkSavedCount > 0 && (
+            <span className="rounded-lg bg-lavender/10 px-2.5 py-1 text-amethyst dark:bg-lavender/20 dark:text-lavender">{bulkSavedCount} salvos agora</span>
+          )}
         </div>
       </div>
 

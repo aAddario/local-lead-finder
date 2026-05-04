@@ -85,7 +85,7 @@ export function LeadCard({ lead, editable = false, onChange }: LeadCardProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-stone-100 px-5 py-3 dark:border-white/5">
-        <LeadActions lead={lead} onSaved={onChange} layout="inline" />
+        <LeadActions lead={lead} onSaved={onChange} layout="inline" persisted={editable} />
       </div>
     </article>
   );

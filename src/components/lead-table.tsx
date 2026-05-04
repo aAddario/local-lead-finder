@@ -42,7 +42,7 @@ export function LeadTable({ leads, editable = false, onChange }: { leads: Lead[]
       { header: "Cidade", accessorKey: "city", cell: ({ row }) => <span className="text-sm">{row.original.city}</span> },
       { header: "Status", accessorKey: "status", cell: ({ row }) => editable ? <StatusEditor lead={row.original} onChange={updateRow} /> : <StatusBadge status={row.original.status} /> },
       { header: "Observações", accessorKey: "notes", cell: ({ row }) => editable ? <NotesEditor lead={row.original} onChange={updateRow} /> : <span className="line-clamp-2 text-sm text-stone-600 dark:text-stone-300">{row.original.notes}</span> },
-      { id: "actions", header: "Ações", cell: ({ row }) => <LeadActions lead={row.original} onSaved={updateRow} /> }
+      { id: "actions", header: "Ações", cell: ({ row }) => <LeadActions lead={row.original} onSaved={updateRow} persisted={editable} /> }
     ],
     [editable, updateRow]
   );
