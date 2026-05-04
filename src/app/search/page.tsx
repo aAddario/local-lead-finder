@@ -1,22 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckSquare, Search, Square } from "lucide-react";
+import { AlertTriangle, CheckSquare, Globe2, MapPin, Search, SlidersHorizontal, Square, Target } from "lucide-react";
 import { LeadList } from "@/components/lead-list";
 import { LeadMap } from "@/components/lead-map";
 import { EmptyState } from "@/components/empty-state";
 import { SkeletonRows } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input, Select } from "@/components/ui/input";
+import { Select } from "@/components/ui/input";
 import { categoryConfigs } from "@/lib/categories";
 import { fetchJson } from "@/lib/api";
+import { defaultCountryId, defaultPlaceId, getCountryPreset, getPlacePreset, locationPresetCountries } from "@/lib/location-presets";
 import type { Lead, LeadSearchRequest } from "@/types/lead";
 
 type SearchResponse = { leads: Lead[]; geo: { label: string; lat: number; lng: number } };
 
 export default function SearchPage() {
-  const [location, setLocation] = useState("Patos PB");
+  const [countryId, setCountryId] = useState(defaultCountryId);
+  const [placeId, setPlaceId] = useState(defaultPlaceId);
   const [radiusKm, setRadiusKm] = useState(3);
   const [categories, setCategories] = useState<string[]>(["clinics", "dentists", "salons", "petshops", "offices"]);
   const [filters, setFilters] = useState({ noWebsiteOnly: true, withPhoneOnly: false, ignoreFranchises: true, prioritizeHighTicket: true });
@@ -25,6 +27,11 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
+
+  const selectedCountry = getCountryPreset(countryId);
+  const selectedPlace = getPlacePreset(countryId, placeId);
+  const location = selectedPlace.query;
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -56,37 +63,98 @@ export default function SearchPage() {
     setCategories([]);
   }
 
+  function changeCountry(nextCountryId: string) {
+    const nextCountry = getCountryPreset(nextCountryId);
+    setCountryId(nextCountry.id);
+    setPlaceId(nextCountry.places[0].id);
+  }
+
   return (
-    <div className="mx-auto max-w-7xl px-6 py-10 space-y-8">
-      <section>
-        <p className="text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Busca por área</p>
-        <h1 className="mt-2 max-w-4xl text-2xl font-medium tracking-tight text-charcoal dark:text-white md:text-3xl">
-          Encontre leads por cidade, bairro, raio e categoria.
-        </h1>
+    <div className="mx-auto max-w-7xl space-y-8 px-6 py-10">
+      <section className="relative overflow-hidden rounded-2xl border border-parchment bg-[linear-gradient(135deg,#fbfaf6_0%,#f3f7f2_48%,#eef4f6_100%)] p-6 dark:border-white/10 dark:bg-[linear-gradient(135deg,#10121b_0%,#171a28_55%,#20261f_100%)] md:p-8">
+        <div className="max-w-4xl">
+          <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+            <Target className="h-4 w-4" />
+            Busca por area
+          </p>
+          <h1 className="mt-3 max-w-4xl text-2xl font-medium tracking-tight text-charcoal dark:text-white md:text-4xl">
+            Escolha pais e cidade. Sem digitar localizacao.
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600 dark:text-stone-300 md:text-base">
+            Presets reduzem erro de geocodificacao e deixam cada busca repetivel por mercado.
+          </p>
+        </div>
+
+        <div className="mt-6 grid gap-3 text-sm sm:grid-cols-3">
+          <div className="rounded-xl border border-white/70 bg-white/70 p-4 shadow-tight dark:border-white/10 dark:bg-white/5">
+            <p className="font-bold text-charcoal dark:text-white">{selectedCountry.label}</p>
+            <p className="mt-1 text-stone-500 dark:text-stone-400">{selectedPlace.label}</p>
+          </div>
+          <div className="rounded-xl border border-white/70 bg-white/70 p-4 shadow-tight dark:border-white/10 dark:bg-white/5">
+            <p className="font-bold text-charcoal dark:text-white">{radiusKm} km radius</p>
+            <p className="mt-1 text-stone-500 dark:text-stone-400">Focused local sweep</p>
+          </div>
+          <div className="rounded-xl border border-white/70 bg-white/70 p-4 shadow-tight dark:border-white/10 dark:bg-white/5">
+            <p className="font-bold text-charcoal dark:text-white">{categories.length || "Todas"} categorias</p>
+            <p className="mt-1 text-stone-500 dark:text-stone-400">{activeFilterCount} filtros ativos</p>
+          </div>
+        </div>
       </section>
 
-      <Card className="p-6">
+      <Card className="p-6 shadow-soft">
         <form onSubmit={submit} className="grid gap-6">
-          <div className="grid gap-4 md:grid-cols-[1fr_180px_auto] md:items-end">
+          <div className="grid gap-4 lg:grid-cols-[220px_1fr_150px_auto] lg:items-end">
             <label className="grid gap-2 text-sm font-semibold">
-              Cidade ou bairro
-              <Input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Patos PB, Natal RN, João Pessoa PB" />
+              <span className="inline-flex items-center gap-2">
+                <Globe2 className="h-4 w-4 text-stone-400" />
+                Pais
+              </span>
+              <Select value={countryId} onChange={(event) => changeCountry(event.target.value)}>
+                {locationPresetCountries.map((country) => (
+                  <option key={country.id} value={country.id}>
+                    {country.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="grid gap-2 text-sm font-semibold">
+              <span className="inline-flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-stone-400" />
+                Cidade / mercado
+              </span>
+              <Select value={selectedPlace.id} onChange={(event) => setPlaceId(event.target.value)}>
+                {selectedCountry.places.map((place) => (
+                  <option key={place.id} value={place.id}>
+                    {place.label} - {place.hint}
+                  </option>
+                ))}
+              </Select>
             </label>
             <label className="grid gap-2 text-sm font-semibold">
               Raio
               <Select value={radiusKm} onChange={(event) => setRadiusKm(Number(event.target.value))}>
-                {[1, 3, 5, 10].map((radius) => <option key={radius} value={radius}>{radius} km</option>)}
+                {[1, 3, 5, 10].map((radius) => (
+                  <option key={radius} value={radius}>
+                    {radius} km
+                  </option>
+                ))}
               </Select>
             </label>
-            <Button variant="dark" disabled={loading || !location.trim()}>
+            <Button variant="dark" disabled={loading}>
               <Search className="h-4 w-4" />
               {loading ? "Buscando..." : "Buscar leads"}
             </Button>
           </div>
 
+          <div className="rounded-xl border border-parchment bg-stone-50/70 px-4 py-3 text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
+            <span className="font-bold text-charcoal dark:text-white">Consulta:</span> {location}
+          </div>
+
           <div>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold">Categorias <span className="font-medium text-stone-400">({categories.length || "todas"})</span></p>
+              <p className="text-sm font-semibold">
+                Categorias <span className="font-medium text-stone-400">({categories.length || "todas"})</span>
+              </p>
               <div className="flex gap-2">
                 <Button type="button" size="sm" variant="ghost" onClick={selectAllCategories}>
                   <CheckSquare className="h-4 w-4" />
@@ -102,7 +170,7 @@ export default function SearchPage() {
               {categoryConfigs.map((category) => (
                 <label
                   key={category.id}
-                  className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-parchment px-3 py-2.5 text-sm font-medium transition hover:bg-stone-50 dark:border-white/10 dark:hover:bg-white/5"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-parchment px-3 py-2.5 text-sm font-medium transition hover:-translate-y-0.5 hover:bg-stone-50 dark:border-white/10 dark:hover:bg-white/5"
                 >
                   <input
                     type="checkbox"
@@ -117,7 +185,10 @@ export default function SearchPage() {
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold">Filtros</p>
+            <p className="mb-3 inline-flex items-center gap-2 text-sm font-semibold">
+              <SlidersHorizontal className="h-4 w-4 text-stone-400" />
+              Filtros
+            </p>
             <div className="grid gap-2 md:grid-cols-4">
               {[
                 ["noWebsiteOnly", "Apenas sem site"],
@@ -127,7 +198,7 @@ export default function SearchPage() {
               ].map(([key, label]) => (
                 <label
                   key={key}
-                  className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-parchment px-3 py-2.5 text-sm font-medium transition hover:bg-stone-50 dark:border-white/10 dark:hover:bg-white/5"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-parchment px-3 py-2.5 text-sm font-medium transition hover:-translate-y-0.5 hover:bg-stone-50 dark:border-white/10 dark:hover:bg-white/5"
                 >
                   <input
                     type="checkbox"
@@ -143,7 +214,7 @@ export default function SearchPage() {
 
           <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/30 dark:text-amber-200">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            Use com moderação. O Nominatim geocodifica a localização; o Overpass busca empresas no OSM. Sem scraping do Google Maps.
+            Use com moderacao. O Nominatim geocodifica a localizacao; o Overpass busca empresas no OSM. Sem scraping do Google Maps.
           </div>
         </form>
       </Card>

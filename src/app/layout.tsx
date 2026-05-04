@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { BarChart3, KanbanSquare, Map, Search, Table2 } from "lucide-react";
+import { AppNav } from "@/components/app-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import "./globals.css";
 
@@ -9,14 +9,6 @@ export const metadata: Metadata = {
   title: "Local Lead Finder",
   description: "MVP interno de prospecção local com OpenStreetMap."
 };
-
-const nav = [
-  { href: "/", label: "Dashboard", icon: BarChart3 },
-  { href: "/search", label: "Buscar", icon: Search },
-  { href: "/leads", label: "Leads", icon: Table2 },
-  { href: "/map", label: "Mapa", icon: Map },
-  { href: "/kanban", label: "Kanban", icon: KanbanSquare }
-];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -42,21 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </span>
               </Link>
               <div className="flex flex-wrap items-center gap-1">
-                <nav className="flex flex-wrap items-center gap-1">
-                  {nav.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-base font-semibold text-charcoal no-underline transition hover:bg-warm-cream dark:text-stone-300 dark:hover:bg-white/10"
-                      >
-                        <Icon className="h-5 w-5" />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </nav>
+                <AppNav />
                 <ThemeToggle />
               </div>
             </div>

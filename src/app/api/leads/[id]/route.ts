@@ -1,14 +1,38 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { updateLead } from "@/lib/db";
-import { leadStatuses } from "@/types/lead";
+import { contactChannels, leadStatuses, validationStatuses, websiteStatuses } from "@/types/lead";
+
+const contactHistorySchema = z.object({
+  id: z.string(),
+  at: z.string(),
+  channel: z.enum(contactChannels),
+  note: z.string()
+});
 
 const patchSchema = z
   .object({
     status: z.enum(leadStatuses).optional(),
     notes: z.string().max(5000).optional(),
     phone: z.string().max(120).nullable().optional(),
-    website: z.string().max(500).nullable().optional()
+    website: z.string().max(500).nullable().optional(),
+    hasVerifiedWebsite: z.boolean().optional(),
+    websiteStatus: z.enum(websiteStatuses).optional(),
+    instagramUrl: z.string().max(500).nullable().optional(),
+    facebookUrl: z.string().max(500).nullable().optional(),
+    validationStatus: z.enum(validationStatuses).optional(),
+    lastCheckedAt: z.string().nullable().optional(),
+    firstContactAt: z.string().nullable().optional(),
+    lastContactAt: z.string().nullable().optional(),
+    nextActionAt: z.string().nullable().optional(),
+    estimatedValue: z.number().nullable().optional(),
+    offerType: z.string().max(200).nullable().optional(),
+    contactChannel: z.enum(contactChannels).nullable().optional(),
+    contactHistory: z.array(contactHistorySchema).optional(),
+    websiteAnalysisScore: z.number().min(0).max(100).nullable().optional(),
+    websiteAnalysisLabel: z.enum(["Site ruim", "Site mediano", "Site bom"]).nullable().optional(),
+    websiteAnalysisNotes: z.array(z.string()).optional(),
+    websiteAnalyzedAt: z.string().nullable().optional()
   })
   .refine((patch) => Object.keys(patch).length > 0, "Nenhum campo de atualização fornecido");
 

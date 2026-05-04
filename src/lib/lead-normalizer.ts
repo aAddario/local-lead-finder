@@ -12,7 +12,7 @@ export function normalizeOverpassElements(elements: OverpassElement[], geo: GeoR
   return deduped
     .filter((lead) => !filters.noWebsiteOnly || !lead.website)
     .filter((lead) => !filters.withPhoneOnly || Boolean(lead.phone))
-    .filter((lead) => !filters.ignoreFranchises || !lead.scoreReasons.includes("Possivel franquia/rede"))
+    .filter((lead) => !filters.ignoreFranchises || !lead.scoreNegativeReasons.some((reason) => reason.label.includes("franquia")))
     .sort((a, b) => b.score - a.score);
 }
 
@@ -26,6 +26,8 @@ function normalizeElement(element: OverpassElement, geo: GeoResult): Lead | null
   const category = getReadableCategory(tags);
   const phone = tags["contact:phone"] ?? tags.phone ?? null;
   const website = normalizeWebsite(tags["contact:website"] ?? tags.website ?? null);
+  const instagramUrl = normalizeSocialUrl(tags["contact:instagram"] ?? tags.instagram ?? null, "https://www.instagram.com/");
+  const facebookUrl = normalizeSocialUrl(tags["contact:facebook"] ?? tags.facebook ?? null, "https://www.facebook.com/");
   const address = buildAddress(tags);
   const now = new Date().toISOString();
   const base = {
@@ -42,15 +44,43 @@ function normalizeElement(element: OverpassElement, geo: GeoResult): Lead | null
     score: 0,
     scoreLabel: "Baixo potencial" as const,
     scoreReasons: [],
+    scorePositiveReasons: [],
+    scoreNegativeReasons: [],
+    scoreExplanation: "",
     status: "Novo" as const,
     notes: "",
     source: "openstreetmap" as const,
     rawTags: tags,
+    hasVerifiedWebsite: false,
+    websiteStatus: website ? ("has_website" as const) : ("unknown" as const),
+    instagramUrl,
+    facebookUrl,
+    validationStatus: "pending" as const,
+    lastCheckedAt: null,
+    firstContactAt: null,
+    lastContactAt: null,
+    nextActionAt: null,
+    estimatedValue: null,
+    offerType: null,
+    contactChannel: null,
+    contactHistory: [],
+    websiteAnalysisScore: null,
+    websiteAnalysisLabel: null,
+    websiteAnalysisNotes: [],
+    websiteAnalyzedAt: null,
     createdAt: now,
     updatedAt: now
   };
   const score = calculateLeadScore(base);
-  return { ...base, score: score.score, scoreLabel: score.scoreLabel, scoreReasons: score.reasons };
+  return {
+    ...base,
+    score: score.score,
+    scoreLabel: score.scoreLabel,
+    scoreReasons: score.reasons,
+    scorePositiveReasons: score.positiveReasons,
+    scoreNegativeReasons: score.negativeReasons,
+    scoreExplanation: score.explanation
+  };
 }
 
 function normalizeWebsite(value: string | null) {
@@ -58,6 +88,13 @@ function normalizeWebsite(value: string | null) {
   const trimmed = value.trim();
   if (!trimmed) return null;
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+function normalizeSocialUrl(value: string | null, baseUrl: string) {
+  if (!value) return null;
+  const trimmed = value.trim().replace(/^@/, "");
+  if (!trimmed) return null;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `${baseUrl}${trimmed}`;
 }
 
 function buildAddress(tags: Record<string, string>) {

@@ -41,14 +41,14 @@ export function LeadMap({ leads }: { leads: Lead[] }) {
 
   if (leads.length === 0) return null;
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold tracking-tight text-charcoal dark:text-white">Mapa</h2>
           <p className="text-sm text-stone-500 dark:text-stone-400">A cor do pin segue o score de oportunidade.</p>
         </div>
       </div>
-      <div ref={ref} />
+      <div ref={ref} className="h-[520px] min-h-[420px] w-full" />
     </Card>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowDownUp } from "lucide-react";
 import { flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable, type ColumnDef, type SortingState } from "@tanstack/react-table";
 import { LeadActions } from "@/components/lead-actions";
@@ -21,11 +21,11 @@ export function LeadTable({ leads, editable = false, onChange }: { leads: Lead[]
     setRows(leads);
   }, [leads]);
 
-  const updateRow = (lead: Lead) => {
+  const updateRow = useCallback((lead: Lead) => {
     const next = rows.map((item) => (item.id === lead.id ? lead : item));
     setRows(next);
     onChange?.(next);
-  };
+  }, [onChange, rows]);
 
   const columns = useMemo<ColumnDef<Lead>[]>(
     () => [
@@ -44,7 +44,7 @@ export function LeadTable({ leads, editable = false, onChange }: { leads: Lead[]
       { header: "Observações", accessorKey: "notes", cell: ({ row }) => editable ? <NotesEditor lead={row.original} onChange={updateRow} /> : <span className="line-clamp-2 text-sm text-stone-600 dark:text-stone-300">{row.original.notes}</span> },
       { id: "actions", header: "Ações", cell: ({ row }) => <LeadActions lead={row.original} onSaved={updateRow} /> }
     ],
-    [editable, rows]
+    [editable, updateRow]
   );
 
   const table = useReactTable({

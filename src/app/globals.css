@@ -64,7 +64,9 @@ body {
 body {
   margin: 0;
   color: hsl(var(--foreground));
-  background: var(--pure-white);
+  background:
+    linear-gradient(180deg, rgba(246, 244, 238, 0.9), rgba(255, 255, 255, 0) 340px),
+    var(--pure-white);
   font-family: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   font-size: 16px;
   font-weight: 450;
@@ -73,6 +75,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--lavender);
+  color: var(--mysteria);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -262,6 +269,7 @@ a.no-underline:hover {
 .leaflet-container {
   min-height: 520px;
   width: 100%;
+  height: 100%;
   border-radius: 16px;
   border: 1px solid var(--parchment);
 }
