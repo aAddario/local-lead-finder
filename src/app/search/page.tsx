@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { AlertTriangle, CheckSquare, Globe2, MapPin, Search, SlidersHorizontal, Square, Target } from "lucide-react";
+import { AlertTriangle, CheckSquare, Globe2, History, MapPin, Search, SlidersHorizontal, Square, Target } from "lucide-react";
 import { LeadList } from "@/components/lead-list";
 import { LeadMap } from "@/components/lead-map";
 import { EmptyState } from "@/components/empty-state";
@@ -14,7 +15,7 @@ import { fetchJson } from "@/lib/api";
 import { defaultCountryId, defaultPlaceId, getCountryPreset, getPlacePreset, locationPresetCountries } from "@/lib/location-presets";
 import type { Lead, LeadSearchRequest } from "@/types/lead";
 
-type SearchResponse = { leads: Lead[]; geo: { label: string; lat: number; lng: number } };
+type SearchResponse = { leads: Lead[]; geo: { label: string; lat: number; lng: number }; savedLeadIds: string[]; searchId: string };
 
 export default function SearchPage() {
   const [countryId, setCountryId] = useState(defaultCountryId);
@@ -23,6 +24,8 @@ export default function SearchPage() {
   const [categories, setCategories] = useState<string[]>(["clinics", "dentists", "salons", "petshops", "offices"]);
   const [filters, setFilters] = useState({ noWebsiteOnly: true, withPhoneOnly: false, ignoreFranchises: true, prioritizeHighTicket: true });
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [savedLeadIds, setSavedLeadIds] = useState<string[]>([]);
+  const [searchId, setSearchId] = useState("");
   const [geoLabel, setGeoLabel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -42,10 +45,14 @@ export default function SearchPage() {
       const payload: LeadSearchRequest = { location, radiusKm, categories, filters };
       const data = await fetchJson<SearchResponse>("/api/search", { method: "POST", body: JSON.stringify(payload) });
       setLeads(data.leads);
+      setSavedLeadIds(data.savedLeadIds ?? []);
+      setSearchId(data.searchId ?? "");
       setGeoLabel(data.geo.label);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha na busca");
       setLeads([]);
+      setSavedLeadIds([]);
+      setSearchId("");
     } finally {
       setLoading(false);
     }
@@ -225,10 +232,28 @@ export default function SearchPage() {
       {!loading && leads.length > 0 && (
         <div className="space-y-6">
           <Card className="p-5">
-            <h2 className="text-xl font-bold tracking-tight text-charcoal dark:text-white">{leads.length} leads encontrados</h2>
-            <p className="text-sm text-stone-500 dark:text-stone-400">{geoLabel}</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight text-charcoal dark:text-white">{leads.length} leads encontrados</h2>
+                <p className="text-sm text-stone-500 dark:text-stone-400">{geoLabel}</p>
+              </div>
+              {searchId && (
+                <Link href={`/searches/${searchId}`} className="no-underline">
+                  <Button size="sm" variant="cream">
+                    <History className="h-4 w-4" />
+                    Abrir registro
+                  </Button>
+                </Link>
+              )}
+            </div>
           </Card>
-          <LeadList leads={leads} />
+          <LeadList
+            leads={leads}
+            persistedLeadIds={savedLeadIds}
+            allowCreateCampaignFromVisible
+            onChange={setLeads}
+            onLeadSaved={(lead) => setSavedLeadIds((current) => (current.includes(lead.id) ? current : [...current, lead.id]))}
+          />
           <LeadMap leads={leads} />
         </div>
       )}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { updateLead } from "@/lib/db";
+import { getLead, updateLead } from "@/lib/db";
 import { contactChannels, leadStatuses, validationStatuses, websiteStatuses } from "@/types/lead";
 
 const contactHistorySchema = z.object({
@@ -15,6 +15,7 @@ const patchSchema = z
     status: z.enum(leadStatuses).optional(),
     notes: z.string().max(5000).optional(),
     phone: z.string().max(120).nullable().optional(),
+    email: z.string().max(240).nullable().optional(),
     website: z.string().max(500).nullable().optional(),
     hasVerifiedWebsite: z.boolean().optional(),
     websiteStatus: z.enum(websiteStatuses).optional(),
@@ -35,6 +36,13 @@ const patchSchema = z
     websiteAnalyzedAt: z.string().nullable().optional()
   })
   .refine((patch) => Object.keys(patch).length > 0, "Nenhum campo de atualização fornecido");
+
+export async function GET(_req: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  const lead = getLead(id);
+  if (!lead) return NextResponse.json({ error: "Lead não encontrado" }, { status: 404 });
+  return NextResponse.json({ lead });
+}
 
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
   try {

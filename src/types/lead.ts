@@ -42,6 +42,7 @@ export type ScoreReason = {
 };
 
 export type WebsiteAnalysisLabel = "Site ruim" | "Site mediano" | "Site bom";
+export type DataConfidenceLabel = "Alta" | "Média" | "Baixa";
 
 export type ContactHistoryEntry = {
   id: string;
@@ -56,6 +57,7 @@ export type Lead = {
   name: string;
   category: string;
   phone: string | null;
+  email: string | null;
   website: string | null;
   address: string | null;
   city: string | null;
@@ -75,6 +77,8 @@ export type Lead = {
   websiteStatus: WebsiteStatus;
   instagramUrl: string | null;
   facebookUrl: string | null;
+  dataConfidenceScore: number;
+  dataConfidenceLabel: DataConfidenceLabel;
   validationStatus: ValidationStatus;
   lastCheckedAt: string | null;
   firstContactAt: string | null;
@@ -106,13 +110,27 @@ export type LeadSearchRequest = {
   filters: LeadSearchFilters;
 };
 
+export type SearchGeo = {
+  label: string;
+  lat: number;
+  lng: number;
+  city: string | null;
+};
+
 export type SearchRun = {
   id: string;
   location: string;
   radiusKm: number;
   categories: string[];
+  filters: LeadSearchFilters;
+  geo: SearchGeo;
   createdAt: string;
   resultCount: number;
+};
+
+export type SearchRunDetail = SearchRun & {
+  leads: Lead[];
+  savedLeadIds: string[];
 };
 
 export type Campaign = {

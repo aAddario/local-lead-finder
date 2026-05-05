@@ -122,6 +122,14 @@ a.no-underline:hover {
   opacity: 1;
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Superhuman surface styles */
 .sh-surface {
   background: var(--pure-white);

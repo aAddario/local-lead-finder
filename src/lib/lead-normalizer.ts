@@ -1,4 +1,5 @@
 import { getReadableCategory } from "@/lib/categories";
+import { calculateDataConfidence, normalizeEmail, normalizePhone, normalizeSocialUrl, normalizeWebsite } from "@/lib/data-quality";
 import { calculateLeadScore, normalizeText } from "@/lib/score";
 import type { GeoResult } from "@/lib/geo";
 import type { OverpassElement } from "@/lib/overpass";
@@ -24,10 +25,11 @@ function normalizeElement(element: OverpassElement, geo: GeoResult): Lead | null
   if (!name || typeof lat !== "number" || typeof lng !== "number") return null;
 
   const category = getReadableCategory(tags);
-  const phone = tags["contact:phone"] ?? tags.phone ?? null;
-  const website = normalizeWebsite(tags["contact:website"] ?? tags.website ?? null);
-  const instagramUrl = normalizeSocialUrl(tags["contact:instagram"] ?? tags.instagram ?? null, "https://www.instagram.com/");
-  const facebookUrl = normalizeSocialUrl(tags["contact:facebook"] ?? tags.facebook ?? null, "https://www.facebook.com/");
+  const phone = normalizePhone(firstTag(tags, ["contact:phone", "phone", "mobile", "contact:mobile"]));
+  const email = normalizeEmail(firstTag(tags, ["contact:email", "email"]));
+  const website = normalizeWebsite(firstTag(tags, ["contact:website", "website", "url", "contact:url"]));
+  const instagramUrl = normalizeSocialUrl(firstTag(tags, ["contact:instagram", "instagram", "social:instagram"]), "https://www.instagram.com/");
+  const facebookUrl = normalizeSocialUrl(firstTag(tags, ["contact:facebook", "facebook", "social:facebook"]), "https://www.facebook.com/");
   const address = buildAddress(tags);
   const now = new Date().toISOString();
   const base = {
@@ -36,6 +38,7 @@ function normalizeElement(element: OverpassElement, geo: GeoResult): Lead | null
     name,
     category,
     phone,
+    email,
     website,
     address,
     city: tags["addr:city"] ?? geo.city,
@@ -55,6 +58,8 @@ function normalizeElement(element: OverpassElement, geo: GeoResult): Lead | null
     websiteStatus: website ? ("has_website" as const) : ("unknown" as const),
     instagramUrl,
     facebookUrl,
+    dataConfidenceScore: 0,
+    dataConfidenceLabel: "Baixa" as const,
     validationStatus: "pending" as const,
     lastCheckedAt: null,
     firstContactAt: null,
@@ -72,8 +77,11 @@ function normalizeElement(element: OverpassElement, geo: GeoResult): Lead | null
     updatedAt: now
   };
   const score = calculateLeadScore(base);
+  const confidence = calculateDataConfidence(base);
   return {
     ...base,
+    dataConfidenceScore: confidence.score,
+    dataConfidenceLabel: confidence.label,
     score: score.score,
     scoreLabel: score.scoreLabel,
     scoreReasons: score.reasons,
@@ -83,18 +91,8 @@ function normalizeElement(element: OverpassElement, geo: GeoResult): Lead | null
   };
 }
 
-function normalizeWebsite(value: string | null) {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-}
-
-function normalizeSocialUrl(value: string | null, baseUrl: string) {
-  if (!value) return null;
-  const trimmed = value.trim().replace(/^@/, "");
-  if (!trimmed) return null;
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `${baseUrl}${trimmed}`;
+function firstTag(tags: Record<string, string>, keys: string[]) {
+  return keys.map((key) => tags[key]).find((value) => Boolean(value?.trim())) ?? null;
 }
 
 function buildAddress(tags: Record<string, string>) {

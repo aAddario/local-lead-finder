@@ -1,4 +1,5 @@
 import { generateLeadDiagnosis } from "@/lib/diagnosis";
+import { getWhatsAppPhone } from "@/lib/data-quality";
 import type { Lead } from "@/types/lead";
 
 export type MessageTone = "short" | "professional" | "informal" | "personalized";
@@ -103,8 +104,7 @@ export function getFacebookSearchUrl(lead: Pick<Lead, "name" | "city">) {
 }
 
 export function getWhatsAppUrl(lead: Pick<Lead, "phone" | "name" | "category" | "website" | "scoreLabel">) {
-  if (!lead.phone) return null;
-  const phone = lead.phone.replace(/\D/g, "");
+  const phone = getWhatsAppPhone(lead.phone);
   if (!phone) return null;
   return `https://wa.me/${phone}?text=${encodeURIComponent(getOutreachMessage(lead, "short"))}`;
 }

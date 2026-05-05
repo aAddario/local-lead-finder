@@ -1,7 +1,8 @@
 import Database from "better-sqlite3";
 import path from "node:path";
+import { calculateDataConfidence, normalizeEmail, normalizePhone, normalizeSocialUrl, normalizeWebsite } from "@/lib/data-quality";
 import { calculateLeadScore } from "@/lib/score";
-import type { Campaign, CampaignMetrics, Lead, LeadStatus, SearchRun } from "@/types/lead";
+import type { Campaign, CampaignMetrics, Lead, LeadSearchFilters, LeadStatus, SearchGeo, SearchRun, SearchRunDetail } from "@/types/lead";
 
 const dbPath = path.join(process.cwd(), "local-lead-finder.sqlite");
 let db: Database.Database | null = null;
@@ -12,6 +13,7 @@ type LeadPatch = Partial<
     | "status"
     | "notes"
     | "phone"
+    | "email"
     | "website"
     | "hasVerifiedWebsite"
     | "websiteStatus"
@@ -50,6 +52,7 @@ function migrate(database: Database.Database) {
       name text not null,
       category text not null,
       phone text,
+      email text,
       website text,
       address text,
       city text,
@@ -69,6 +72,8 @@ function migrate(database: Database.Database) {
       websiteStatus text not null default 'unknown',
       instagramUrl text,
       facebookUrl text,
+      dataConfidenceScore integer not null default 0,
+      dataConfidenceLabel text not null default 'Baixa',
       validationStatus text not null default 'pending',
       lastCheckedAt text,
       firstContactAt text,
@@ -91,6 +96,9 @@ function migrate(database: Database.Database) {
       location text not null,
       radiusKm real not null,
       categories text not null,
+      filters text not null default '{}',
+      geo text not null default '{}',
+      results text not null default '[]',
       resultCount integer not null,
       createdAt text not null
     );
@@ -112,10 +120,13 @@ function migrate(database: Database.Database) {
   addMissingColumn(database, "leads", "scorePositiveReasons", "text not null default '[]'");
   addMissingColumn(database, "leads", "scoreNegativeReasons", "text not null default '[]'");
   addMissingColumn(database, "leads", "scoreExplanation", "text not null default ''");
+  addMissingColumn(database, "leads", "email", "text");
   addMissingColumn(database, "leads", "hasVerifiedWebsite", "integer not null default 0");
   addMissingColumn(database, "leads", "websiteStatus", "text not null default 'unknown'");
   addMissingColumn(database, "leads", "instagramUrl", "text");
   addMissingColumn(database, "leads", "facebookUrl", "text");
+  addMissingColumn(database, "leads", "dataConfidenceScore", "integer not null default 0");
+  addMissingColumn(database, "leads", "dataConfidenceLabel", "text not null default 'Baixa'");
   addMissingColumn(database, "leads", "validationStatus", "text not null default 'pending'");
   addMissingColumn(database, "leads", "lastCheckedAt", "text");
   addMissingColumn(database, "leads", "firstContactAt", "text");
@@ -129,6 +140,9 @@ function migrate(database: Database.Database) {
   addMissingColumn(database, "leads", "websiteAnalysisLabel", "text");
   addMissingColumn(database, "leads", "websiteAnalysisNotes", "text not null default '[]'");
   addMissingColumn(database, "leads", "websiteAnalyzedAt", "text");
+  addMissingColumn(database, "searches", "filters", "text not null default '{}'");
+  addMissingColumn(database, "searches", "geo", "text not null default '{}'");
+  addMissingColumn(database, "searches", "results", "text not null default '[]'");
 
   database.exec(`
     create index if not exists leads_score_idx on leads(score desc);
@@ -145,6 +159,14 @@ export function listLeads(): Lead[] {
   return rows.map(rowToLead);
 }
 
+export function listLeadsByIds(ids: string[]): Lead[] {
+  const uniqueIds = Array.from(new Set(ids));
+  if (uniqueIds.length === 0) return [];
+  const placeholders = uniqueIds.map(() => "?").join(",");
+  const rows = getDb().prepare(`select * from leads where id in (${placeholders})`).all(...uniqueIds);
+  return rows.map(rowToLead);
+}
+
 export function saveLead(lead: Lead) {
   const now = new Date().toISOString();
   const prepared = leadToDb({ ...withLeadDefaults(lead), createdAt: lead.createdAt || now, updatedAt: now });
@@ -153,13 +175,13 @@ export function saveLead(lead: Lead) {
       `insert into leads (
         id, osmId, name, category, phone, website, address, city, lat, lng, score, scoreLabel,
         scoreReasons, scorePositiveReasons, scoreNegativeReasons, scoreExplanation, status, notes, source, rawTags,
-        hasVerifiedWebsite, websiteStatus, instagramUrl, facebookUrl, validationStatus, lastCheckedAt,
+        email, hasVerifiedWebsite, websiteStatus, instagramUrl, facebookUrl, dataConfidenceScore, dataConfidenceLabel, validationStatus, lastCheckedAt,
         firstContactAt, lastContactAt, nextActionAt, estimatedValue, offerType, contactChannel, contactHistory,
         websiteAnalysisScore, websiteAnalysisLabel, websiteAnalysisNotes, websiteAnalyzedAt, createdAt, updatedAt
       ) values (
         @id, @osmId, @name, @category, @phone, @website, @address, @city, @lat, @lng, @score, @scoreLabel,
         @scoreReasons, @scorePositiveReasons, @scoreNegativeReasons, @scoreExplanation, @status, @notes, @source, @rawTags,
-        @hasVerifiedWebsite, @websiteStatus, @instagramUrl, @facebookUrl, @validationStatus, @lastCheckedAt,
+        @email, @hasVerifiedWebsite, @websiteStatus, @instagramUrl, @facebookUrl, @dataConfidenceScore, @dataConfidenceLabel, @validationStatus, @lastCheckedAt,
         @firstContactAt, @lastContactAt, @nextActionAt, @estimatedValue, @offerType, @contactChannel, @contactHistory,
         @websiteAnalysisScore, @websiteAnalysisLabel, @websiteAnalysisNotes, @websiteAnalyzedAt, @createdAt, @updatedAt
       )
@@ -168,6 +190,7 @@ export function saveLead(lead: Lead) {
         name = excluded.name,
         category = excluded.category,
         phone = coalesce(excluded.phone, leads.phone),
+        email = coalesce(excluded.email, leads.email),
         website = coalesce(excluded.website, leads.website),
         address = excluded.address,
         city = excluded.city,
@@ -183,6 +206,10 @@ export function saveLead(lead: Lead) {
         notes = leads.notes,
         source = excluded.source,
         rawTags = excluded.rawTags,
+        instagramUrl = coalesce(excluded.instagramUrl, leads.instagramUrl),
+        facebookUrl = coalesce(excluded.facebookUrl, leads.facebookUrl),
+        dataConfidenceScore = excluded.dataConfidenceScore,
+        dataConfidenceLabel = excluded.dataConfidenceLabel,
         updatedAt = excluded.updatedAt`
     )
     .run(prepared);
@@ -213,6 +240,7 @@ export function updateLead(id: string, patch: LeadPatch) {
         status = @status,
         notes = @notes,
         phone = @phone,
+        email = @email,
         website = @website,
         score = @score,
         scoreLabel = @scoreLabel,
@@ -224,6 +252,8 @@ export function updateLead(id: string, patch: LeadPatch) {
         websiteStatus = @websiteStatus,
         instagramUrl = @instagramUrl,
         facebookUrl = @facebookUrl,
+        dataConfidenceScore = @dataConfidenceScore,
+        dataConfidenceLabel = @dataConfidenceLabel,
         validationStatus = @validationStatus,
         lastCheckedAt = @lastCheckedAt,
         firstContactAt = @firstContactAt,
@@ -249,25 +279,53 @@ export function getLead(id: string) {
   return row ? rowToLead(row) : null;
 }
 
-export function recordSearch(search: Omit<SearchRun, "id" | "createdAt">) {
+export function recordSearch(search: Omit<SearchRun, "id" | "createdAt"> & { leads: Lead[] }) {
   const run: SearchRun = {
-    ...search,
+    location: search.location,
+    radiusKm: search.radiusKm,
+    categories: search.categories,
+    filters: search.filters,
+    geo: search.geo,
+    resultCount: search.resultCount,
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString()
   };
   getDb()
-    .prepare("insert into searches (id, location, radiusKm, categories, resultCount, createdAt) values (@id, @location, @radiusKm, @categories, @resultCount, @createdAt)")
-    .run({ ...run, categories: JSON.stringify(run.categories) });
+    .prepare(
+      `insert into searches (id, location, radiusKm, categories, filters, geo, results, resultCount, createdAt)
+       values (@id, @location, @radiusKm, @categories, @filters, @geo, @results, @resultCount, @createdAt)`
+    )
+    .run({
+      ...run,
+      categories: JSON.stringify(run.categories),
+      filters: JSON.stringify(run.filters),
+      geo: JSON.stringify(run.geo),
+      results: JSON.stringify(search.leads)
+    });
+  return run;
 }
 
 export function listSearches(): SearchRun[] {
   return getDb()
     .prepare("select * from searches order by createdAt desc limit 12")
     .all()
-    .map((row) => {
-      const item = row as Omit<SearchRun, "categories"> & { categories: string };
-      return { ...item, categories: safeJson(item.categories, []) };
-    });
+    .map(rowToSearch);
+}
+
+export function getSearch(id: string): SearchRunDetail | null {
+  const row = getDb().prepare("select * from searches where id = ?").get(id);
+  if (!row) return null;
+
+  const search = rowToSearch(row);
+  const item = row as Record<string, unknown>;
+  const storedLeads = safeJson<Lead[]>(String(item.results ?? "[]"), []);
+  const savedLeads = listLeadsByIds(storedLeads.map((lead) => lead.id));
+  const savedLeadById = new Map(savedLeads.map((lead) => [lead.id, lead]));
+  return {
+    ...search,
+    leads: storedLeads.map((lead) => savedLeadById.get(lead.id) ?? lead),
+    savedLeadIds: savedLeads.map((lead) => lead.id)
+  };
 }
 
 export function listCampaigns(): Campaign[] {
@@ -402,6 +460,31 @@ function rowToCampaign(row: unknown): Campaign {
   };
 }
 
+function rowToSearch(row: unknown): SearchRun {
+  const item = row as Record<string, unknown>;
+  const location = String(item.location ?? "");
+  const defaultGeo = { label: location, lat: 0, lng: 0, city: null };
+  return {
+    id: String(item.id),
+    location,
+    radiusKm: Number(item.radiusKm ?? 0),
+    categories: safeJson(String(item.categories ?? "[]"), []),
+    filters: { ...defaultSearchFilters(), ...safeJson<Partial<LeadSearchFilters>>(String(item.filters ?? "{}"), {}) },
+    geo: { ...defaultGeo, ...safeJson<Partial<SearchGeo>>(String(item.geo ?? "{}"), {}) },
+    resultCount: Number(item.resultCount ?? 0),
+    createdAt: String(item.createdAt)
+  };
+}
+
+function defaultSearchFilters(): LeadSearchFilters {
+  return {
+    noWebsiteOnly: false,
+    withPhoneOnly: false,
+    ignoreFranchises: false,
+    prioritizeHighTicket: false
+  };
+}
+
 function leadToDb(lead: Lead) {
   return {
     ...lead,
@@ -419,13 +502,19 @@ function leadToDb(lead: Lead) {
 function withLeadDefaults(input: Partial<Lead>): Lead {
   const now = new Date().toISOString();
   const rawTags = input.rawTags ?? {};
-  return {
+  const phone = normalizePhone(input.phone ?? null);
+  const email = normalizeEmail(input.email ?? null);
+  const website = normalizeWebsite(input.website ?? null);
+  const instagramUrl = normalizeSocialUrl(input.instagramUrl ?? null, "https://www.instagram.com/");
+  const facebookUrl = normalizeSocialUrl(input.facebookUrl ?? null, "https://www.facebook.com/");
+  const draft: Lead = {
     id: input.id ?? crypto.randomUUID(),
     osmId: input.osmId,
     name: input.name ?? "Lead sem nome",
     category: input.category ?? "Empresa local",
-    phone: input.phone ?? null,
-    website: input.website ?? null,
+    phone,
+    email,
+    website,
     address: input.address ?? null,
     city: input.city ?? null,
     lat: input.lat ?? 0,
@@ -441,9 +530,11 @@ function withLeadDefaults(input: Partial<Lead>): Lead {
     source: "openstreetmap",
     rawTags,
     hasVerifiedWebsite: input.hasVerifiedWebsite ?? false,
-    websiteStatus: input.websiteStatus ?? (input.website ? "has_website" : "unknown"),
-    instagramUrl: input.instagramUrl ?? null,
-    facebookUrl: input.facebookUrl ?? null,
+    websiteStatus: input.websiteStatus ?? (website ? "has_website" : "unknown"),
+    instagramUrl,
+    facebookUrl,
+    dataConfidenceScore: 0,
+    dataConfidenceLabel: "Baixa",
     validationStatus: input.validationStatus ?? "pending",
     lastCheckedAt: input.lastCheckedAt ?? null,
     firstContactAt: input.firstContactAt ?? null,
@@ -459,6 +550,12 @@ function withLeadDefaults(input: Partial<Lead>): Lead {
     websiteAnalyzedAt: input.websiteAnalyzedAt ?? null,
     createdAt: input.createdAt ?? now,
     updatedAt: input.updatedAt ?? now
+  };
+  const confidence = calculateDataConfidence(draft);
+  return {
+    ...draft,
+    dataConfidenceScore: confidence.score,
+    dataConfidenceLabel: confidence.label
   };
 }
 

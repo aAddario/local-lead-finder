@@ -1,15 +1,20 @@
 import Link from "next/link";
-import { ArrowRight, Download, Flag, MapPin, Phone, Radar, Search, Send, Table2, Target, Trophy, Workflow } from "lucide-react";
+import { ArrowRight, CalendarClock, Download, Flag, MapPin, Phone, Radar, Search, Send, Table2, Target, Trophy, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScoreBadge } from "@/components/score-badge";
 import { dashboardStats, listLeads, listSearches } from "@/lib/db";
+import { formatActionDate, getFollowupQueue, isOverdue } from "@/lib/followups";
 import type { Lead } from "@/types/lead";
+
+export const dynamic = "force-dynamic";
 
 export default function DashboardPage() {
   const leads = listLeads();
   const searches = listSearches();
   const stats = dashboardStats();
+  const followupQueue = getFollowupQueue(leads);
+  const dueFollowups = [...followupQueue.overdue, ...followupQueue.dueToday];
   const topCategories = getTopCounts(leads, (lead) => lead.category, 8);
   const topCities = getTopCounts(leads, (lead) => lead.city ?? "Cidade desconhecida", 8);
   const statusCounts = getTopCounts(leads, (lead) => lead.status, 12);
@@ -111,6 +116,7 @@ export default function DashboardPage() {
           </Card>
 
           <div className="grid gap-6">
+            <FollowupPanel leads={dueFollowups} overdueCount={followupQueue.overdue.length} todayCount={followupQueue.dueToday.length} />
             <ExportPanel />
             <RecentSearches searches={searches} />
           </div>
@@ -124,6 +130,39 @@ export default function DashboardPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+function FollowupPanel({ leads, overdueCount, todayCount }: { leads: Lead[]; overdueCount: number; todayCount: number }) {
+  return (
+    <Card className="p-6">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="inline-flex items-center gap-2 text-lg font-bold tracking-tight text-charcoal dark:text-white">
+            <CalendarClock className="h-5 w-5 text-stone-400" />
+            Follow-ups
+          </h2>
+          <p className="text-xs text-stone-500 dark:text-stone-400">{overdueCount} vencidos · {todayCount} hoje</p>
+        </div>
+        <Link href="/followups" className="no-underline">
+          <Button size="sm" variant="cream"><ArrowRight className="h-4 w-4" />Abrir</Button>
+        </Link>
+      </div>
+      <div className="divide-y divide-parchment dark:divide-white/10">
+        {leads.length === 0 && <p className="py-4 text-sm text-stone-500 dark:text-stone-400">Nada vencido para hoje.</p>}
+        {leads.slice(0, 5).map((lead) => (
+          <div key={lead.id} className="py-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="truncate font-bold text-charcoal dark:text-white">{lead.name}</p>
+              <span className={isOverdue(lead.nextActionAt) ? "rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700 dark:bg-red-950/40 dark:text-red-200" : "rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-200"}>
+                {isOverdue(lead.nextActionAt) ? "Vencido" : "Hoje"}
+              </span>
+            </div>
+            <p className="mt-1 truncate text-xs text-stone-500 dark:text-stone-400">{lead.status} · {formatActionDate(lead.nextActionAt)}</p>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -158,13 +197,13 @@ function RecentSearches({ searches }: { searches: ReturnType<typeof listSearches
       <div className="mt-4 divide-y divide-parchment dark:divide-white/10">
         {searches.length === 0 && <p className="py-4 text-sm text-stone-500 dark:text-stone-400">Nenhuma busca ainda.</p>}
         {searches.slice(0, 5).map((search) => (
-          <div key={search.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+          <Link key={search.id} href={`/searches/${search.id}`} className="flex items-center justify-between gap-3 py-3 text-sm no-underline">
             <div className="min-w-0">
               <p className="truncate font-bold text-charcoal dark:text-white">{search.location}</p>
               <p className="text-xs text-stone-500 dark:text-stone-400">{search.radiusKm}km · {search.categories.length || "todas"} categorias</p>
             </div>
             <span className="rounded-lg bg-warm-cream px-2.5 py-1 text-xs font-bold text-charcoal dark:bg-white/10 dark:text-white">{search.resultCount}</span>
-          </div>
+          </Link>
         ))}
       </div>
     </Card>
