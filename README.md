@@ -1,369 +1,167 @@
 # Local Lead Finder
 
-Ferramenta interna para prospecção local usando dados públicos do OpenStreetMap. O app ajuda a encontrar empresas locais, priorizar oportunidades, validar presença digital, gerar mensagens de abordagem e organizar o funil até proposta.
-
-> Uso pessoal/interno. Não faz scraping do Google Maps e não automatiza contato em massa.
-
-## Visão geral
-
-Local Lead Finder funciona como uma pequena máquina de prospecção local:
-
-- busca empresas por país, cidade/mercado, raio e categoria;
-- consulta geocodificação via Nominatim e empresas via Overpass/OpenStreetMap;
-- normaliza dados, remove duplicados e salva leads em SQLite local;
-- calcula score de oportunidade de 0 a 100;
-- explica motivos positivos e negativos do score;
-- gera diagnóstico automático do lead;
-- gera mensagens de abordagem por nicho;
-- permite validação manual rápida;
-- analisa site existente de forma simples;
-- gera proposta comercial copiável;
-- organiza leads em mini-CRM e campanhas;
-- exporta CSV com campos comerciais úteis.
-
-## Funcionalidades
-
-### Busca de leads
-
-- Seleção de país e cidade/mercado por preset, sem precisar digitar local livremente.
-- Controle de raio: 1 km, 3 km, 5 km ou 10 km.
-- Filtros por categoria, sem site, com telefone, ignorar franquias e priorizar alto ticket.
-- Resultados com lista, cards, mapa e exportação.
-
-### Score de oportunidade
-
-O score final vai de 0 a 100 e considera:
-
-- presença digital;
-- facilidade de contato;
-- potencial comercial;
-- qualidade dos dados;
-- prioridade de abordagem.
-
-Labels:
-
-| Faixa | Label |
-| --- | --- |
-| 80-100 | Ótimo lead |
-| 60-79 | Bom lead |
-| 40-59 | Verificar manualmente |
-| 0-39 | Baixo potencial |
-
-Critérios principais:
-
-| Critério | Pontos |
-| --- | ---: |
-| Não possui site cadastrado | +30 |
-| Telefone público disponível | +20 |
-| Nicho de alto ticket | +15 |
-| Endereço completo ou claro | +10 |
-| Parece negócio local | +10 |
-| Nome comercial claro | +10 |
-| Possui algum canal de contato | +10 |
-| Possui site cadastrado | -30 |
-| Parece franquia ou rede grande | -25 |
-| Dados muito incompletos | -20 |
-| Categoria de menor potencial | -15 |
-
-Cada lead mostra:
-
-- score total;
-- label;
-- explicação automática;
-- motivos positivos;
-- motivos negativos.
-
-### Validação manual rápida
-
-Cada card de lead inclui ações para:
-
-- buscar no Google;
-- buscar no Instagram;
-- buscar no Facebook;
-- abrir WhatsApp quando houver telefone;
-- marcar como `tem site`;
-- marcar como `site ruim`;
-- marcar como `sem site confirmado`;
-- marcar como `bom lead`;
-- descartar.
-
-Essas ações atualizam o lead no banco.
-
-Campos de validação:
-
-- `hasVerifiedWebsite`
-- `websiteStatus`
-- `instagramUrl`
-- `facebookUrl`
-- `validationStatus`
-- `lastCheckedAt`
-
-### Mini-CRM
-
-Status disponíveis:
-
-- Novo
-- Verificar
-- Verificado
-- Contato enviado
-- Respondeu
-- Reunião marcada
-- Proposta enviada
-- Fechado
-- Perdido
-- Descartado
-
-Campos comerciais:
-
-- `firstContactAt`
-- `lastContactAt`
-- `nextActionAt`
-- `estimatedValue`
-- `offerType`
-- `contactChannel`
-- `contactHistory`
+Privacy-first local business discovery and lightweight CRM powered by OpenStreetMap and Overpass.
 
-Canais:
+Local Lead Finder helps developers, freelancers, and small teams discover local businesses, prioritize opportunities, validate public contact data, and manage an outreach pipeline without scraping closed platforms or automating spam.
 
-- WhatsApp
-- Instagram
-- Ligação
-- E-mail
-- Presencial
+> Status: early-stage open-source project. The current version is useful for local prospecting workflows and is being hardened with tests, documentation, and maintainer automation.
 
-A tela `/kanban` permite mover leads entre colunas por drag and drop ou seletor de status.
+## Why this exists
 
-### Mensagens por nicho
+Most local lead tools depend on proprietary datasets, aggressive scraping, or bulk-contact automation. Local Lead Finder takes a safer approach:
 
-O app gera mensagens diferentes por categoria:
+- open data first: OpenStreetMap, Nominatim, and Overpass;
+- local-first storage: SQLite on the user's machine;
+- transparent scoring: deterministic rules instead of opaque lead scores;
+- manual validation: quick links for checking websites and social profiles;
+- no mass outreach: messages and proposals are generated for manual review.
 
-- clínica médica;
-- clínica odontológica;
-- estética;
-- salão de beleza;
-- restaurante;
-- oficina mecânica;
-- pet shop;
-- academia;
-- loja local;
-- escritório de advocacia;
-- genérico.
+The goal is to make local business discovery reproducible, inspectable, and useful for small operators who cannot afford expensive proprietary lead databases.
 
-Cada lead tem botões para copiar:
+## Features
 
-- mensagem curta;
-- mensagem profissional;
-- mensagem informal;
-- mensagem personalizada.
-
-### Diagnóstico do lead
-
-Cada lead mostra uma seção `Diagnóstico do lead` com:
-
-- problema provável;
-- oportunidade;
-- solução sugerida;
-- oferta recomendada;
-- nível de prioridade.
-
-O diagnóstico é baseado em regras locais. Não usa IA externa.
-
-### Análise de site
-
-Quando o lead tem site, o botão `Analisar site` faz uma leitura simples da página principal via `fetch`.
-
-A análise verifica sinais como:
-
-- site carregou corretamente;
-- link ou botão de WhatsApp;
-- CTA claro;
-- seção de serviços/produtos;
-- formulário de contato;
-- meta viewport;
-- título;
-- descrição;
-- sinais de site antigo ou incompleto.
-
-Resultado:
-
-| Faixa | Label |
-| --- | --- |
-| 0-39 | Site ruim |
-| 40-69 | Site mediano |
-| 70-100 | Site bom |
-
-Não há scraping agressivo. É uma checagem simples da página principal.
-
-### Propostas
-
-Cada lead pode gerar uma proposta copiável com:
-
-- nome da empresa;
-- problema identificado;
-- solução sugerida;
-- itens inclusos;
-- prazo sugerido;
-- faixa de valor sugerida;
-- mensagem final.
-
-Faixas usadas:
-
-- landing page simples: R$ 500 a R$ 900;
-- site institucional: R$ 900 a R$ 1.800;
-- site + automação simples: R$ 1.500 a R$ 3.000;
-- pacote completo: R$ 3.000+.
-
-### Campanhas
-
-Rotas:
-
-- `/campaigns`
-- `/campaigns/[id]`
-
-Campanhas agrupam leads por objetivo comercial.
-
-Cada campanha possui:
-
-- nome;
-- cidade;
-- nicho;
-- objetivo;
-- oferta principal;
-- leads vinculados;
-- métricas.
-
-Métricas:
-
-- total de leads;
-- leads verificados;
-- contatos enviados;
-- respostas;
-- reuniões;
-- propostas enviadas;
-- fechamentos.
-
-### Exportação CSV
-
-O CSV inclui:
-
-- nome;
-- categoria;
-- cidade;
-- endereço;
-- telefone;
-- site;
-- score;
-- label do score;
-- status;
-- diagnóstico resumido;
-- oferta recomendada;
-- canal de contato;
-- último contato;
-- próxima ação;
-- observações.
-
-Escopos disponíveis:
-
-- todos os leads;
-- apenas ótimos leads;
-- apenas leads sem site;
-- apenas leads verificados;
-- apenas leads de uma campanha.
-
-## Rotas principais
-
-| Rota | Uso |
-| --- | --- |
-| `/` | Dashboard com métricas, gráficos simples e exportações |
-| `/search` | Buscar leads por país, cidade, raio e categoria |
-| `/leads` | Lista de leads salvos com filtros e ações |
-| `/map` | Mapa dos leads salvos |
-| `/kanban` | Mini-CRM em colunas |
-| `/campaigns` | Lista e criação de campanhas |
-| `/campaigns/[id]` | Detalhe da campanha e leads vinculados |
-
-## Stack
-
-- [Next.js 15](https://nextjs.org/) com App Router
-- [React 19](https://react.dev/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [SQLite](https://github.com/WiseLibs/better-sqlite3) via `better-sqlite3`
-- [Leaflet](https://leafletjs.com/) para mapa
-- [TanStack Table](https://tanstack.com/table) para tabela
-- [Lucide React](https://lucide.dev/) para ícones
-- APIs públicas: [Nominatim](https://nominatim.org/) e [Overpass](https://overpass-api.de/)
-
-## Rodando localmente
+### Local business search
+
+- Search by city, radius, and business category.
+- Query OpenStreetMap through Overpass.
+- Normalize business names, coordinates, addresses, phones, websites, and social links.
+- Filter for businesses without a website, with phone numbers, or without obvious franchise signals.
+- Export leads to CSV.
+
+### Opportunity scoring
+
+Each lead receives a 0-100 score based on explainable rules:
+
+- missing website;
+- phone or contact data available;
+- high-ticket category;
+- complete address;
+- local-business signal;
+- clear business name;
+- franchise or large-chain penalty;
+- incomplete-data penalty.
+
+Every score includes positive and negative reasons so users can review why a lead was prioritized.
+
+### Manual validation workflow
+
+Lead cards include shortcuts to:
+
+- search the business on Google;
+- search Instagram and Facebook;
+- open WhatsApp when a phone number is available;
+- mark website status;
+- mark a lead as verified, discarded, or high-potential;
+- save notes and follow-up information.
+
+### Lightweight CRM
+
+The app includes a simple pipeline for moving leads through statuses:
+
+- New;
+- Check;
+- Verified;
+- Contact sent;
+- Replied;
+- Meeting scheduled;
+- Proposal sent;
+- Closed;
+- Lost;
+- Discarded.
+
+### Website checks and proposals
+
+For businesses with websites, Local Lead Finder can run a basic homepage check for public signals such as WhatsApp links, CTA clarity, services sections, forms, viewport metadata, title, and description.
+
+For promising leads, the app can generate a copyable proposal outline based on the lead's visible gaps and business category.
+
+## Tech stack
+
+- Next.js 15
+- React 19
+- TypeScript
+- SQLite through better-sqlite3
+- Tailwind CSS
+- Leaflet
+- OpenStreetMap / Nominatim / Overpass
+- Vitest
+- ESLint
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 22+
+- npm
+
+### Install
 
 ```bash
-npm install
+git clone https://github.com/aAddario/local-lead-finder.git
+cd local-lead-finder
+npm ci
+```
+
+### Run locally
+
+```bash
 npm run dev
 ```
 
-Acesse:
+Open `http://localhost:3000`.
 
-```text
-http://localhost:3000
-```
+The app creates a local SQLite database for saved leads and searches. SQLite files are ignored by Git because they may contain personal or business data.
 
-O comando `npm run dev` precisa ficar rodando enquanto você usa o app.
-
-## Scripts
+### Quality checks
 
 ```bash
-npm run dev        # desenvolvimento
-npm run build      # build de produção
-npm run start      # servidor de produção após build
-npm run lint       # ESLint
-npm run typecheck  # TypeScript sem emitir arquivos
+npm run lint
+npm run typecheck
+npm test
+npm run build
 ```
 
-## Banco de dados
+## Open data and responsible use
 
-O banco local fica em:
+Local Lead Finder does not scrape Google Maps and does not automate bulk messaging. It uses public OpenStreetMap data and gives users manual validation tools.
 
-```text
-local-lead-finder.sqlite
-```
+When using the app:
 
-As migrações são aplicadas automaticamente na inicialização do app. O SQLite usa WAL, então arquivos `local-lead-finder.sqlite-wal` e `local-lead-finder.sqlite-shm` podem aparecer durante uso local.
+- respect OpenStreetMap, Nominatim, and Overpass usage policies;
+- verify lead data manually before contacting any business;
+- avoid spam and bulk outreach;
+- follow local privacy, marketing, and data-protection rules.
 
-## Estrutura
+## Maintainer roadmap
 
-```text
-src/
-├── app/
-│   ├── api/              # APIs internas
-│   ├── campaigns/        # páginas de campanhas
-│   ├── kanban/           # mini-CRM
-│   ├── leads/            # leads salvos
-│   ├── map/              # mapa
-│   └── search/           # busca
-├── components/           # UI reutilizável
-├── lib/                  # regras de negócio
-│   ├── csv.ts
-│   ├── db.ts
-│   ├── diagnosis.ts
-│   ├── outreach.ts
-│   ├── proposal.ts
-│   ├── score.ts
-│   └── website-analysis.ts
-└── types/                # tipos compartilhados
-```
+Current priorities:
 
-## Categorias suportadas
+- expand OpenStreetMap category coverage;
+- add fixtures for messy Overpass data;
+- improve deduplication and data-quality scoring;
+- add more unit and integration tests;
+- document common local prospecting workflows;
+- add optional AI-assisted explanations while keeping the core app usable without API keys.
 
-Clínicas, dentistas, restaurantes, cafés, salões de beleza, estéticas, pet shops, oficinas, lojas de móveis, academias e escritórios locais.
+See `docs/roadmap.md` and `docs/maintainer-automation.md` for more detail.
 
-## Limites e cuidados
+## Contributing
 
-- Use com moderação para respeitar limites de Nominatim e Overpass.
-- Não usa scraping do Google Maps.
-- Não automatiza disparo de mensagens.
-- A análise de site é simples e pode falhar em páginas bloqueadas por CORS, bot protection ou timeout.
-- O score é uma heurística comercial. Ele ajuda a priorizar, mas validação manual ainda é necessária.
+Contributions are welcome. Good first areas:
 
-## Licença
+- new category mappings;
+- tests for real-world OpenStreetMap tags;
+- documentation improvements;
+- CSV/export improvements;
+- accessibility and UX fixes;
+- safer validation workflows.
 
-Uso interno/pessoal.
+Read `CONTRIBUTING.md` before opening a pull request.
+
+## Security
+
+Please do not open public issues for vulnerabilities or sensitive data exposure. See `SECURITY.md`.
+
+## License
+
+MIT. See `LICENSE`.

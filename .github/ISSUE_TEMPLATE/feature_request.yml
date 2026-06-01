@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest a responsible local-business discovery improvement
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow or user pain does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the change and why it fits the project's open-data, manual-review approach.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: responsible-use
+    attributes:
+      label: Responsible use
+      options:
+        - label: This does not add closed-platform scraping.
+          required: true
+        - label: This does not add automated bulk outreach.
+          required: true

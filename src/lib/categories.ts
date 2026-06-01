@@ -54,7 +54,10 @@ export function getReadableCategory(tags: Record<string, string>) {
 }
 
 export function isHighTicketCategory(category: string) {
-  const normalized = category.toLowerCase();
+  const normalized = category
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
   return ["clinica", "dentista", "estetica", "pet", "moveis", "academia", "juridico", "contabil", "imobiliaria"].some((term) =>
     normalized.includes(term)
   );

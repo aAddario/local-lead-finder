@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a reproducible problem in Local Lead Finder
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Do not include private lead databases, API keys, or customer data.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug and the expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Include steps, route/page, filters, and relevant public OSM tags if possible.
+      placeholder: |
+        1. Go to...
+        2. Search for...
+        3. Expected...
+        4. Actual...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0 or commit SHA
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, public links, anonymized OSM tags, or logs.
